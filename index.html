@@ -1,0 +1,1971 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arduino Security System</title>
+<meta name="description" content="A keypad alarm system for Arduino Uno with an LCD, ultrasonic motion sensor, siren, servo lock, lockouts and a changeable code. Wiring, full code, explanation and troubleshooting.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ec;
+  --text: #1d1c1a;
+  --muted: #6a665e;
+  --border: #e3dfd6;
+  --accent: #0f766e;
+  --accent-soft: #e3f3f0;
+  --accent-text: #ffffff;
+  --red: #c2410c;
+  --red-soft: #fdeee6;
+  --green: #15803d;
+  --amber: #b45309;
+  --amber-soft: #fdf3e2;
+  --wire-signal: #0f766e;
+  --wire-power: #c2410c;
+  --wire-gnd: #57534e;
+  --code-bg: #f6f4ee;
+  --tok-comment: #8a857a;
+  --tok-keyword: #9a3412;
+  --tok-string: #15803d;
+  --tok-number: #7c3aed;
+  --tok-func: #0e7490;
+  --tok-macro: #b45309;
+  --lcd-bg: #1e40af;
+  --lcd-text: #e0f2fe;
+  --shadow: 0 1px 2px rgba(20, 18, 14, .05), 0 4px 16px rgba(20, 18, 14, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131311;
+    --surface: #1b1b18;
+    --surface-2: #24241f;
+    --text: #ecebe5;
+    --muted: #a29e94;
+    --border: #34332d;
+    --accent: #2dd4bf;
+    --accent-soft: #15302b;
+    --accent-text: #0b1513;
+    --red: #fb923c;
+    --red-soft: #3a2117;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --amber-soft: #352915;
+    --wire-signal: #2dd4bf;
+    --wire-power: #fb923c;
+    --wire-gnd: #a8a29e;
+    --code-bg: #181815;
+    --tok-comment: #8b877d;
+    --tok-keyword: #fdba74;
+    --tok-string: #86efac;
+    --tok-number: #c4b5fd;
+    --tok-func: #67e8f9;
+    --tok-macro: #fcd34d;
+    --lcd-bg: #1e3a8a;
+    --lcd-text: #e0f2fe;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131311;
+  --surface: #1b1b18;
+  --surface-2: #24241f;
+  --text: #ecebe5;
+  --muted: #a29e94;
+  --border: #34332d;
+  --accent: #2dd4bf;
+  --accent-soft: #15302b;
+  --accent-text: #0b1513;
+  --red: #fb923c;
+  --red-soft: #3a2117;
+  --green: #4ade80;
+  --amber: #fbbf24;
+  --amber-soft: #352915;
+  --wire-signal: #2dd4bf;
+  --wire-power: #fb923c;
+  --wire-gnd: #a8a29e;
+  --code-bg: #181815;
+  --tok-comment: #8b877d;
+  --tok-keyword: #fdba74;
+  --tok-string: #86efac;
+  --tok-number: #c4b5fd;
+  --tok-func: #67e8f9;
+  --tok-macro: #fcd34d;
+  --lcd-bg: #1e3a8a;
+  --lcd-text: #e0f2fe;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); }
+code, pre, kbd, .mono { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+:not(pre) > code {
+  font-size: .86em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .08em .35em;
+}
+kbd {
+  display: inline-block;
+  min-width: 1.7em;
+  text-align: center;
+  font-size: .85em;
+  font-weight: 500;
+  padding: .05em .4em;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+/* ---------- Layout ---------- */
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 48px;
+}
+nav.toc {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 32px 0;
+  font-size: 14px;
+}
+nav.toc .brand { font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+}
+nav.toc li a:hover { color: var(--text); background: var(--surface-2); }
+nav.toc li a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.theme-btn {
+  margin-top: 20px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+main { padding: 32px 0 96px; min-width: 0; }
+
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 16px; }
+  nav.toc { display: none; }
+}
+
+/* ---------- Hero ---------- */
+.hero { padding: 24px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.1; letter-spacing: -.02em; margin: 10px 0 14px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 680px; margin: 0 0 24px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; }
+@media (max-width: 760px) { .hero-grid { grid-template-columns: minmax(0, 1fr); } }
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: inherit; font-size: 14px; font-weight: 600;
+  padding: 9px 16px; border-radius: 8px; text-decoration: none; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn:hover { filter: brightness(1.05); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.chip { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+
+/* ---------- Sections ---------- */
+section { padding-top: 48px; }
+h2 { font-size: 26px; letter-spacing: -.01em; margin: 0 0 6px; }
+h2 .num { color: var(--muted); font-weight: 500; margin-right: 10px; font-size: .8em; }
+.sub { color: var(--muted); margin: 0 0 22px; }
+h3 { font-size: 18px; margin: 28px 0 10px; }
+p { margin: 0 0 14px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .grid-3, .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+.feature h4 { margin: 0 0 4px; font-size: 15px; }
+.feature p { margin: 0; color: var(--muted); font-size: 14px; }
+.feature .ico { width: 28px; height: 28px; color: var(--accent); margin-bottom: 8px; }
+
+.callout {
+  border-left: 3px solid var(--amber);
+  background: var(--amber-soft);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin: 18px 0;
+  font-size: 15px;
+}
+.callout.info { border-left-color: var(--accent); background: var(--accent-soft); }
+.callout.danger { border-left-color: var(--red); background: var(--red-soft); }
+.callout strong:first-child { display: block; margin-bottom: 2px; }
+
+/* ---------- Tables ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--surface-2); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+td.pin { font-family: "JetBrains Mono", monospace; font-weight: 500; white-space: nowrap; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+/* ---------- Diagrams ---------- */
+.diagram { width: 100%; height: auto; display: block; }
+.diagram text { font-family: Inter, system-ui, sans-serif; fill: var(--text); }
+.diagram .muted { fill: var(--muted); }
+.diagram .box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+.diagram .board { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.diagram .w-sig { stroke: var(--wire-signal); stroke-width: 2; fill: none; }
+.diagram .w-pwr { stroke: var(--wire-power); stroke-width: 2; fill: none; }
+.diagram .w-gnd { stroke: var(--wire-gnd); stroke-width: 2; fill: none; stroke-dasharray: 5 4; }
+.diagram .edge { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+.diagram .node { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+.diagram .node.armed { stroke: var(--green); }
+.diagram .node.alert { stroke: var(--red); fill: var(--red-soft); }
+.diagram .node.entry { stroke: var(--amber); fill: var(--amber-soft); }
+.diagram .lbl { font-size: 12px; fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 13px; color: var(--muted); margin-top: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 22px; height: 0; border-top: 2px solid; margin-right: 6px; vertical-align: middle; }
+.legend .l-sig::before { border-color: var(--wire-signal); }
+.legend .l-pwr::before { border-color: var(--wire-power); }
+.legend .l-gnd::before { border-color: var(--wire-gnd); border-top-style: dashed; }
+
+/* Keypad ribbon */
+.ribbon { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.ribbon div {
+  text-align: center; border: 1px solid var(--border); border-radius: 8px; padding: 8px 2px;
+  background: var(--surface); font-size: 13px;
+}
+.ribbon b { display: block; font-family: "JetBrains Mono", monospace; color: var(--accent); font-size: 14px; }
+.ribbon .row { border-top: 3px solid var(--accent); }
+.ribbon .col { border-top: 3px solid var(--amber); }
+@media (max-width: 520px) { .ribbon { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Pin map */
+.pinmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.pinmap div { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; background: var(--surface); }
+.pinmap b { font-family: "JetBrains Mono", monospace; display: block; font-size: 13px; }
+.pinmap .free { opacity: .55; border-style: dashed; }
+.pinmap .used b { color: var(--accent); }
+
+/* ---------- LCD simulator ---------- */
+.sim { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .sim { grid-template-columns: minmax(0, 1fr); } }
+.sim-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.sim-list button {
+  font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.sim-list button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.device {
+  background: #2b2b2b;
+  border-radius: 14px;
+  padding: 16px;
+  color: #ddd;
+}
+.lcd {
+  background: var(--lcd-bg);
+  border-radius: 6px;
+  padding: 12px 14px;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), inset 0 0 18px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+.lcd div {
+  font-family: "JetBrains Mono", monospace;
+  font-size: clamp(14px, 4.2vw, 19px);
+  color: var(--lcd-text);
+  white-space: pre;
+  letter-spacing: .06em;
+  line-height: 1.45;
+  text-shadow: 0 0 6px rgba(224, 242, 254, .45);
+}
+.leds { display: flex; gap: 18px; margin-top: 14px; font-size: 12.5px; align-items: center; }
+.led { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -2px; background: #444; }
+.led.g.on { background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+.led.r.on { background: #f87171; box-shadow: 0 0 10px #f87171; }
+.led.blink { animation: blink .5s steps(1) infinite; }
+@keyframes blink { 50% { background: #444; box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .led.blink { animation: none; } }
+.sim-info { margin-top: 14px; font-size: 14.5px; }
+.sim-info .k { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+
+/* ---------- Code ---------- */
+.code-box { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--code-bg); }
+.code-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+  font-size: 13px; color: var(--muted);
+}
+.code-head .actions { display: flex; gap: 6px; }
+.code-head button, .code-head a {
+  font: inherit; font-size: 12.5px; font-weight: 500; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none;
+}
+pre { margin: 0; padding: 16px; overflow-x: auto; font-size: 13px; line-height: 1.6; tab-size: 2; }
+pre.tall { max-height: 560px; }
+pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+.token.comment { color: var(--tok-comment); font-style: italic; }
+.token.keyword, .token.boolean { color: var(--tok-keyword); }
+.token.string, .token.char { color: var(--tok-string); }
+.token.number { color: var(--tok-number); }
+.token.function, .token.builtin { color: var(--tok-func); }
+.token.macro, .token.directive, .token.property { color: var(--tok-macro); }
+.token.operator, .token.punctuation { color: var(--muted); }
+
+/* ---------- Accordions ---------- */
+details.acc {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 10px;
+}
+details.acc > summary {
+  cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; gap: 12px; align-items: baseline;
+}
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary::before { content: "+"; font-family: "JetBrains Mono", monospace; color: var(--accent); width: 12px; flex: none; }
+details.acc[open] > summary::before { content: "−"; }
+details.acc > summary .fn { font-family: "JetBrains Mono", monospace; font-size: 12.5px; color: var(--muted); font-weight: 400; margin-left: auto; }
+details.acc .body { padding: 0 18px 16px 42px; }
+details.acc .body pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; margin: 10px 0 14px; }
+@media (max-width: 600px) { details.acc .body { padding-left: 18px; } details.acc > summary .fn { display: none; } }
+
+/* ---------- Troubleshooter ---------- */
+.ts { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .ts { grid-template-columns: minmax(0, 1fr); } }
+.ts-list { display: flex; flex-direction: column; gap: 4px; }
+.ts-list button {
+  text-align: left; font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent; background: none; color: var(--text);
+}
+.ts-list button:hover { background: var(--surface-2); }
+.ts-list button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.ts-list .grp { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; margin: 10px 12px 2px; }
+.ts-panel h3 { margin-top: 0; }
+.ts-panel ol { padding-left: 20px; margin: 0; }
+.ts-panel li { margin-bottom: 8px; }
+.ts-panel .tag { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+ul.tight { padding-left: 20px; margin: 0 0 14px; }
+ul.tight li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc" aria-label="Contents">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Security System
+    </div>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#parts">Parts &amp; libraries</a></li>
+      <li><a href="#wiring">Wiring</a></li>
+      <li><a href="#using">How to use it</a></li>
+      <li><a href="#screens">Screen simulator</a></li>
+      <li><a href="#states">How it thinks</a></li>
+      <li><a href="#code">The code</a></li>
+      <li><a href="#explained">Code explained</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#debug">Debugging</a></li>
+      <li><a href="#extras">Notes &amp; ideas</a></li>
+    </ol>
+    <button class="theme-btn" id="themeBtn" type="button">Toggle dark mode</button>
+  </nav>
+
+  <main>
+    <!-- ================= HERO ================= -->
+    <header class="hero" id="overview">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Arduino Uno project</div>
+          <h1>Keypad Security System</h1>
+          <p class="lede">A small alarm system that guards a doorway. It watches for motion with an ultrasonic sensor, gives you 10 seconds to type your code, then sounds a siren. It also has a servo "lock", lockouts for wrong guesses, and a code you can change from the keypad.</p>
+          <div class="btn-row">
+            <a class="btn primary" href="security_system/security_system.ino" download>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download the sketch
+            </a>
+            <a class="btn" href="#wiring">See the wiring</a>
+            <a class="btn" href="#debug">Something not working?</a>
+          </div>
+          <div class="chips">
+            <span class="chip">Arduino Uno</span>
+            <span class="chip">C++ / Arduino IDE</span>
+            <span class="chip">9 components</span>
+            <span class="chip">No <code>delay()</code> in the main loop</span>
+            <span class="chip">Beginner–intermediate</span>
+          </div>
+        </div>
+        <div class="device" style="width: min(330px, 100%);" aria-hidden="true">
+          <div class="lcd"><div>System Armed    </div><div>Enter Code      </div></div>
+          <div class="leds"><span><i class="led g on"></i>Green</span><span><i class="led r"></i>Red</span></div>
+        </div>
+      </div>
+    </header>
+
+    <section aria-labelledby="feat-h">
+      <h2 id="feat-h"><span class="num">01</span>What it does</h2>
+      <p class="sub">Everything the finished system can do.</p>
+      <div class="grid-3">
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12a10 10 0 0 1 20 0M6 12a6 6 0 0 1 12 0M10 12a2 2 0 0 1 4 0"/></svg>
+          <h4>Motion detection</h4>
+          <p>An HC-SR04 checks for anything closer than 20&nbsp;cm, 10 times a second. It needs 3 close readings in a row, so a single glitch won't set it off.</p>
+        </div>
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></svg>
+          <h4>Exit &amp; entry delays</h4>
+          <p>You get 5 seconds to leave after arming. When motion is seen, you get 10 seconds to type your code before the siren, with warning beeps that speed up.</p>
+        </div>
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+          <h4>Siren &amp; sound effects</h4>
+          <p>A rising and falling 600–1600&nbsp;Hz siren, plus key clicks, a happy chirp for a right code and a low buzz for a wrong one.</p>
+        </div>
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <h4>Lockout on wrong codes</h4>
+          <p>Three wrong codes lock the keypad for 10&nbsp;s, then 30&nbsp;s, then 60&nbsp;s. The sensor and siren keep working while it's locked.</p>
+        </div>
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          <h4>Changeable code</h4>
+          <p>Press <kbd>A</kbd> while disarmed to change the code. It's saved in EEPROM, so it survives a power cut. Forgot it? Hold the button while powering on.</p>
+        </div>
+        <div class="card feature">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+          <h4>Alarm handling</h4>
+          <p>A second "alert code" stops the siren and asks whether it was a false alarm or a real threat. A servo acts as a lock: closed when armed, open otherwise.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PARTS ================= -->
+    <section id="parts" aria-labelledby="parts-h">
+      <h2 id="parts-h"><span class="num">02</span>Parts &amp; libraries</h2>
+      <p class="sub">Everything here comes in most Arduino starter kits.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>Qty</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Arduino Uno (R3 or compatible)</td><td>1</td><td>Any ATmega328P board with the same pins works.</td></tr>
+            <tr><td>16×2 LCD with I2C backpack</td><td>1</td><td>The backpack (PCF8574) cuts the wiring down to 4 pins. Usual address is <code>0x27</code>, sometimes <code>0x3F</code>.</td></tr>
+            <tr><td>4×4 membrane keypad</td><td>1</td><td>8-wire ribbon, no power pins.</td></tr>
+            <tr><td>HC-SR04 ultrasonic sensor</td><td>1</td><td>Measures 2–400&nbsp;cm.</td></tr>
+            <tr><td>SG90 micro servo</td><td>1</td><td>Acts as the door lock.</td></tr>
+            <tr><td>Passive buzzer</td><td>1</td><td>Must be <strong>passive</strong> for the siren and tones. An active buzzer only makes one sound.</td></tr>
+            <tr><td>Push button</td><td>1</td><td>Any momentary tactile button.</td></tr>
+            <tr><td>LEDs (green + red)</td><td>2</td><td>Standard 5&nbsp;mm.</td></tr>
+            <tr><td>220&nbsp;Ω resistors</td><td>2</td><td>One for each LED.</td></tr>
+            <tr><td>Breadboard + jumper wires</td><td>—</td><td>Male-to-male and male-to-female.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Libraries</h3>
+      <p>Install the first two from <strong>Sketch → Include Library → Manage Libraries…</strong> in the Arduino IDE. The rest come with the IDE.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Library</th><th>Search for</th><th>Used for</th></tr></thead>
+          <tbody>
+            <tr><td><code>LiquidCrystal_I2C</code></td><td>"LiquidCrystal I2C" by Frank de Brabander</td><td>The LCD</td></tr>
+            <tr><td><code>Keypad</code></td><td>"Keypad" by Mark Stanley, Alexander Brevig</td><td>Reading the 4×4 keypad</td></tr>
+            <tr><td><code>Servo</code></td><td>Built in</td><td>The lock servo</td></tr>
+            <tr><td><code>EEPROM</code></td><td>Built in</td><td>Saving the code</td></tr>
+            <tr><td><code>Wire</code></td><td>Built in</td><td>I2C for the LCD</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= WIRING ================= -->
+    <section id="wiring" aria-labelledby="wiring-h">
+      <h2 id="wiring-h"><span class="num">03</span>Wiring</h2>
+      <p class="sub">Every connection, as a diagram and as a table.</p>
+
+      <div class="card" style="padding: 12px;">
+        <svg class="diagram" viewBox="0 0 900 540" role="img" aria-labelledby="wd-title">
+          <title id="wd-title">Wiring diagram: keypad, ultrasonic sensor and buzzer on the Uno's digital pins; LEDs, button, servo and LCD on the analog pins; 5V and GND to the power rails.</title>
+          <!-- Uno -->
+          <rect class="board" x="330" y="56" width="240" height="440" rx="14"/>
+          <text x="450" y="84" text-anchor="middle" font-weight="700" font-size="16">Arduino Uno</text>
+          <!-- left pin labels -->
+          <g font-size="13" font-family="JetBrains Mono, monospace">
+            <text x="342" y="104">D2</text><text x="342" y="136">D3</text><text x="342" y="168">D4</text><text x="342" y="200">D5</text>
+            <text x="342" y="232">D6</text><text x="342" y="264">D7</text><text x="342" y="296">D8</text><text x="342" y="328">D9</text>
+            <text x="342" y="376">D10</text><text x="342" y="408">D11</text><text x="342" y="456">D12</text>
+            <text x="558" y="104" text-anchor="end">A0</text><text x="558" y="144" text-anchor="end">A1</text>
+            <text x="558" y="204" text-anchor="end">A2</text><text x="558" y="264" text-anchor="end">A3</text>
+            <text x="558" y="324" text-anchor="end">A4</text><text x="558" y="356" text-anchor="end">A5</text>
+            <text x="558" y="424" text-anchor="end">5V</text><text x="558" y="464" text-anchor="end">GND</text>
+          </g>
+
+          <!-- Keypad -->
+          <rect class="box" x="30" y="84" width="170" height="256" rx="10"/>
+          <text x="42" y="210" font-weight="600" font-size="14">4×4</text><text x="42" y="228" font-weight="600" font-size="14">Keypad</text>
+          <g font-size="12" class="muted" font-family="JetBrains Mono, monospace">
+            <text x="188" y="104" text-anchor="end" class="muted">Col 4</text>
+            <text x="188" y="136" text-anchor="end" class="muted">Col 3</text>
+            <text x="188" y="168" text-anchor="end" class="muted">Col 2</text>
+            <text x="188" y="200" text-anchor="end" class="muted">Col 1</text>
+            <text x="188" y="232" text-anchor="end" class="muted">Row 4</text>
+            <text x="188" y="264" text-anchor="end" class="muted">Row 3</text>
+            <text x="188" y="296" text-anchor="end" class="muted">Row 2</text>
+            <text x="188" y="328" text-anchor="end" class="muted">Row 1</text>
+          </g>
+          <g class="w-sig">
+            <path d="M200 100 H330"/><path d="M200 132 H330"/><path d="M200 164 H330"/><path d="M200 196 H330"/>
+            <path d="M200 228 H330"/><path d="M200 260 H330"/><path d="M200 292 H330"/><path d="M200 324 H330"/>
+          </g>
+
+          <!-- Ultrasonic -->
+          <rect class="box" x="30" y="352" width="170" height="70" rx="10"/>
+          <text x="42" y="376" font-weight="600" font-size="14">HC-SR04</text>
+          <g font-size="12" font-family="JetBrains Mono, monospace">
+            <text x="188" y="376" text-anchor="end" class="muted">Trig</text>
+            <text x="188" y="408" text-anchor="end" class="muted">Echo</text>
+          </g>
+          <path class="w-sig" d="M200 372 H330"/><path class="w-sig" d="M200 404 H330"/>
+
+          <!-- Buzzer -->
+          <rect class="box" x="30" y="434" width="170" height="40" rx="10"/>
+          <text x="42" y="459" font-weight="600" font-size="14">Buzzer</text>
+          <text x="188" y="459" text-anchor="end" font-size="12" class="muted" font-family="JetBrains Mono, monospace">+</text>
+          <path class="w-sig" d="M200 452 H330"/>
+
+          <!-- Right side parts -->
+          <rect class="box" x="700" y="82" width="170" height="36" rx="10"/>
+          <text x="712" y="105" font-size="13.5" font-weight="600">Green LED <tspan class="muted" font-weight="400">+ 220Ω</tspan></text>
+          <path class="w-sig" d="M570 100 H700"/>
+
+          <rect class="box" x="700" y="122" width="170" height="36" rx="10"/>
+          <text x="712" y="145" font-size="13.5" font-weight="600">Red LED <tspan class="muted" font-weight="400">+ 220Ω</tspan></text>
+          <path class="w-sig" d="M570 140 H700"/>
+
+          <rect class="box" x="700" y="182" width="170" height="36" rx="10"/>
+          <text x="712" y="205" font-size="13.5" font-weight="600">Button <tspan class="muted" font-weight="400">→ GND</tspan></text>
+          <path class="w-sig" d="M570 200 H700"/>
+
+          <rect class="box" x="700" y="242" width="170" height="36" rx="10"/>
+          <text x="712" y="265" font-size="13.5" font-weight="600">Servo <tspan class="muted" font-weight="400">signal</tspan></text>
+          <path class="w-sig" d="M570 260 H700"/>
+
+          <rect class="box" x="700" y="298" width="170" height="70" rx="10"/>
+          <text x="712" y="321" font-size="13.5" font-weight="600">I2C LCD</text>
+          <g font-size="12" font-family="JetBrains Mono, monospace">
+            <text x="858" y="324" text-anchor="end" class="muted">SDA</text>
+            <text x="858" y="356" text-anchor="end" class="muted">SCL</text>
+          </g>
+          <path class="w-sig" d="M570 320 H700"/><path class="w-sig" d="M570 352 H700"/>
+
+          <rect class="box" x="700" y="396" width="170" height="84" rx="10"/>
+          <text x="712" y="418" font-size="13.5" font-weight="600">Power rails</text>
+          <text x="712" y="440" font-size="12" class="muted">LCD, sensor, servo VCC</text>
+          <text x="712" y="470" font-size="12" class="muted">Every part's GND</text>
+          <path class="w-pwr" d="M570 420 H700"/>
+          <path class="w-gnd" d="M570 460 H700"/>
+        </svg>
+        <div class="legend" style="padding: 0 8px 6px;"><span class="l-sig">Signal</span><span class="l-pwr">5V</span><span class="l-gnd">Ground</span></div>
+      </div>
+
+      <h3>Connection table</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>Part pin</th><th>Arduino pin</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="4">I2C LCD</td><td>SDA</td><td class="pin">A4</td><td rowspan="4">Address <code>0x27</code> in the code.</td></tr>
+            <tr><td>SCL</td><td class="pin">A5</td></tr>
+            <tr><td>VCC</td><td class="pin">5V</td></tr>
+            <tr><td>GND</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="4">HC-SR04</td><td>Trig</td><td class="pin">D10</td><td rowspan="4">Point it at the doorway, away from walls closer than 20&nbsp;cm.</td></tr>
+            <tr><td>Echo</td><td class="pin">D11</td></tr>
+            <tr><td>VCC</td><td class="pin">5V</td></tr>
+            <tr><td>GND</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="2">Buzzer</td><td>+</td><td class="pin">D12</td><td rowspan="2">Passive buzzer.</td></tr>
+            <tr><td>−</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="3">Servo</td><td>Signal (orange/yellow)</td><td class="pin">A3</td><td rowspan="3">Analog pins work as digital pins, so the Servo library can use A3.</td></tr>
+            <tr><td>VCC (red)</td><td class="pin">5V</td></tr>
+            <tr><td>GND (brown/black)</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="2">Push button</td><td>One side</td><td class="pin">A2</td><td rowspan="2">Uses <code>INPUT_PULLUP</code>, so the other side goes to GND, <strong>not</strong> 5V.</td></tr>
+            <tr><td>Other side</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="2">Green LED</td><td>Long leg (+)</td><td class="pin">A0</td><td rowspan="2">Through its own 220&nbsp;Ω resistor.</td></tr>
+            <tr><td>Short leg (−)</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="2">Red LED</td><td>Long leg (+)</td><td class="pin">A1</td><td rowspan="2">Through its own 220&nbsp;Ω resistor.</td></tr>
+            <tr><td>Short leg (−)</td><td class="pin">GND</td></tr>
+            <tr><td rowspan="2">4×4 keypad</td><td>Rows 1–4</td><td class="pin">D9, D8, D7, D6</td><td rowspan="2">No power pins. Don't connect it to 5V or GND.</td></tr>
+            <tr><td>Columns 1–4</td><td class="pin">D5, D4, D3, D2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Keypad ribbon, in the order that worked</h3>
+      <p>The 8 ribbon wires, in order:</p>
+      <div class="ribbon" role="list">
+        <div class="row" role="listitem">Row 1<b>D9</b></div>
+        <div class="row" role="listitem">Row 2<b>D8</b></div>
+        <div class="row" role="listitem">Row 3<b>D7</b></div>
+        <div class="row" role="listitem">Row 4<b>D6</b></div>
+        <div class="col" role="listitem">Col 1<b>D5</b></div>
+        <div class="col" role="listitem">Col 2<b>D4</b></div>
+        <div class="col" role="listitem">Col 3<b>D3</b></div>
+        <div class="col" role="listitem">Col 4<b>D2</b></div>
+      </div>
+      <div class="callout info"><strong>Keys coming out wrong?</strong>Many keypads label their pins in the opposite order. If keys are mixed up, flip the ribbon around (or swap the pin arrays in the code) and run the <a href="#debug">self-test</a> to check.</div>
+
+      <h3>Pin map</h3>
+      <p>Every pin on the Uno and what it's used for. Only D13 is left free (D0 and D1 are used by USB).</p>
+      <div class="pinmap">
+        <div class="free"><b>D0</b>USB serial</div>
+        <div class="free"><b>D1</b>USB serial</div>
+        <div class="used"><b>D2</b>Keypad C4</div>
+        <div class="used"><b>D3</b>Keypad C3</div>
+        <div class="used"><b>D4</b>Keypad C2</div>
+        <div class="used"><b>D5</b>Keypad C1</div>
+        <div class="used"><b>D6</b>Keypad R4</div>
+        <div class="used"><b>D7</b>Keypad R3</div>
+        <div class="used"><b>D8</b>Keypad R2</div>
+        <div class="used"><b>D9</b>Keypad R1</div>
+        <div class="used"><b>D10</b>Sensor Trig</div>
+        <div class="used"><b>D11</b>Sensor Echo</div>
+        <div class="used"><b>D12</b>Buzzer</div>
+        <div class="free"><b>D13</b>Free</div>
+        <div class="used"><b>A0</b>Green LED</div>
+        <div class="used"><b>A1</b>Red LED</div>
+        <div class="used"><b>A2</b>Button</div>
+        <div class="used"><b>A3</b>Servo</div>
+        <div class="used"><b>A4</b>LCD SDA</div>
+        <div class="used"><b>A5</b>LCD SCL</div>
+      </div>
+      <div class="callout"><strong>Power tip</strong>Every part shares the Uno's GND. If the board resets or the LCD flickers when the servo moves, the servo is pulling too much current from USB. Put a 470–1000&nbsp;µF capacitor across the servo's 5V and GND, or power the servo from a separate 5V supply with its GND joined to the Uno's GND.</div>
+    </section>
+
+    <!-- ================= USING ================= -->
+    <section id="using" aria-labelledby="using-h">
+      <h2 id="using-h"><span class="num">04</span>How to use it</h2>
+      <p class="sub">The codes, the keys and what each one does.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="sim-info"><span class="k">Arm / disarm code</span></div>
+          <p style="font-size: 28px; font-weight: 700; margin: 2px 0 4px;" class="mono">1234</p>
+          <p style="margin: 0; color: var(--muted); font-size: 14px;">Arms and disarms the system, and stops the entry countdown. You can change it with <kbd>A</kbd>.</p>
+        </div>
+        <div class="card">
+          <div class="sim-info"><span class="k">Alert code</span></div>
+          <p style="font-size: 28px; font-weight: 700; margin: 2px 0 4px;" class="mono">2468</p>
+          <p style="margin: 0; color: var(--muted); font-size: 14px;">Only works while the siren is going. Opens the "False alarm or real threat?" choice.</p>
+        </div>
+      </div>
+      <div class="callout danger"><strong>Change the codes before you share this</strong>Everyone reading this page knows <code>1234</code> and <code>2468</code>. Change the arm code with <kbd>A</kbd>, and change <code>ALERT_PASSWORD</code> in the code.</div>
+
+      <h3>Keys</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Key</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>0</kbd>–<kbd>9</kbd></td><td>Type a code (up to 8 characters). The screen shows <code>Code: 12</code> as you type.</td></tr>
+            <tr><td><kbd>#</kbd></td><td>Submit the code.</td></tr>
+            <tr><td><kbd>*</kbd></td><td>Clear what you typed. While changing the code, pressing it with nothing typed cancels.</td></tr>
+            <tr><td><kbd>A</kbd></td><td>While disarmed: start changing the arm code.</td></tr>
+            <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>After the alert code: <kbd>1</kbd> = false alarm, <kbd>2</kbd> = real threat.</td></tr>
+            <tr><td>Button</td><td>While disarmed: arm right away. During the alarm: asks for the arm code to reset. Otherwise it does nothing.</td></tr>
+            <tr><td>Button held at power-on</td><td>Resets a forgotten code to <code>1234</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>A typical day</h3>
+      <ol class="tight">
+        <li><strong>Power on.</strong> The screen says <code>Starting...</code>, then the system arms itself. You have 5 seconds to step away.</li>
+        <li><strong>Someone walks in.</strong> The screen shows <code>Motion! 10s left</code>, the red LED blinks, and it beeps once a second, then faster for the last 3 seconds.</li>
+        <li><strong>You type <code>1234#</code> in time.</strong> <code>Access Granted</code> / <code>System Disarmed</code>. The servo opens.</li>
+        <li><strong>Or nobody types the code.</strong> The siren starts and the red LED stays on. Type <code>2468#</code>, then <kbd>1</kbd> (false alarm) or <kbd>2</kbd> (real threat). Both disarm the system.</li>
+        <li><strong>Leaving again?</strong> Type <code>1234#</code> or press the button to arm.</li>
+      </ol>
+
+      <h3>Changing the code</h3>
+      <ol class="tight">
+        <li>Make sure the system is disarmed, then press <kbd>A</kbd>.</li>
+        <li>Type the old code and press <kbd>#</kbd>.</li>
+        <li>Type the new code (4–8 digits) and press <kbd>#</kbd>.</li>
+        <li>Type it again and press <kbd>#</kbd>. You'll see <code>Code Saved!</code>.</li>
+      </ol>
+
+      <h3>LED meanings</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>State</th><th>Green</th><th>Red</th><th>Servo</th></tr></thead>
+          <tbody>
+            <tr><td>Armed</td><td><span class="dot" style="background: var(--green)"></span>On</td><td>Off</td><td>0° (locked)</td></tr>
+            <tr><td>Entry countdown</td><td>Off</td><td><span class="dot" style="background: var(--red)"></span>Blinking</td><td>0° (locked)</td></tr>
+            <tr><td>Alarm</td><td>Off</td><td><span class="dot" style="background: var(--red)"></span>On</td><td>90° (open)</td></tr>
+            <tr><td>Disarmed / changing code</td><td>Off</td><td>Off</td><td>90° (open)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= SIMULATOR ================= -->
+    <section id="screens" aria-labelledby="screens-h">
+      <h2 id="screens-h"><span class="num">05</span>Screen simulator</h2>
+      <p class="sub">Pick a moment to see exactly what the LCD and LEDs show.</p>
+      <div class="sim">
+        <div>
+          <div class="sim-list" id="simList" role="group" aria-label="Choose a screen"></div>
+        </div>
+        <div>
+          <div class="device">
+            <div class="lcd" aria-live="polite"><div id="lcd0"></div><div id="lcd1"></div></div>
+            <div class="leds"><span><i class="led g" id="ledG"></i>Green</span><span><i class="led r" id="ledR"></i>Red</span><span id="sound" style="margin-left: auto; color: #aaa;"></span></div>
+          </div>
+          <div class="sim-info">
+            <div class="k">When this shows</div>
+            <p id="simWhen" style="margin: 2px 0 0;"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STATES ================= -->
+    <section id="states" aria-labelledby="states-h">
+      <h2 id="states-h"><span class="num">06</span>How it thinks</h2>
+      <p class="sub">The system is always in exactly one <em>state</em>. Each arrow is the thing that moves it to the next one.</p>
+      <div class="card" style="padding: 12px;">
+        <svg class="diagram" viewBox="0 0 860 400" role="img" aria-labelledby="sd-title">
+          <title id="sd-title">State diagram. Disarmed to Armed with the code or button. Armed to Entry on motion. Entry to Disarmed with the code, or to Alert after 10 seconds. Alert to Confirm with the alert code, or back to Armed with the button then the code. Confirm to Disarmed with 1 or 2. Disarmed to Change code with A.</title>
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" style="fill: var(--muted)"/>
+            </marker>
+          </defs>
+          <!-- edges -->
+          <path class="edge" marker-end="url(#arr)" d="M205 192 L358 128"/>
+          <text class="lbl" x="212" y="134">1234# or button</text>
+          <path class="edge" marker-end="url(#arr)" d="M362 146 L212 214"/>
+          <text class="lbl" x="296" y="208">1234#</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M505 110 L643 110"/>
+          <text class="lbl" x="574" y="100" text-anchor="middle">motion &lt; 20 cm</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M720 133 L720 285"/>
+          <text class="lbl" x="730" y="205">10 s, no code</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M645 310 L507 310"/>
+          <text class="lbl" x="576" y="300" text-anchor="middle">2468#</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M355 318 C 290 318, 230 292, 207 237"/>
+          <text class="lbl" x="280" y="330" text-anchor="middle">1 or 2</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M700 87 C 620 14, 240 14, 152 185"/>
+          <text class="lbl" x="430" y="38" text-anchor="middle">1234# in time</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M680 287 L470 136"/>
+          <text class="lbl" text-anchor="middle" transform="translate(575 211) rotate(35.7)" dy="-6">button, then 1234#</text>
+
+          <path class="edge" marker-end="url(#arr)" d="M118 234 L118 326"/>
+          <text class="lbl" x="108" y="284" text-anchor="end">A</text>
+          <path class="edge" marker-end="url(#arr)" d="M162 326 L162 234"/>
+          <text class="lbl" x="172" y="284">saved or *</text>
+
+          <!-- nodes -->
+          <rect class="node" x="65" y="187" width="150" height="46" rx="10"/>
+          <text x="140" y="215" text-anchor="middle" font-weight="600">Disarmed</text>
+          <rect class="node armed" x="355" y="87" width="150" height="46" rx="10"/>
+          <text x="430" y="115" text-anchor="middle" font-weight="600">Armed</text>
+          <rect class="node entry" x="645" y="87" width="150" height="46" rx="10"/>
+          <text x="720" y="115" text-anchor="middle" font-weight="600">Entry (10 s)</text>
+          <rect class="node alert" x="645" y="287" width="150" height="46" rx="10"/>
+          <text x="720" y="315" text-anchor="middle" font-weight="600">Alert (siren)</text>
+          <rect class="node alert" x="355" y="287" width="150" height="46" rx="10"/>
+          <text x="430" y="315" text-anchor="middle" font-weight="600">Confirm</text>
+          <rect class="node" x="65" y="328" width="150" height="46" rx="10"/>
+          <text x="140" y="356" text-anchor="middle" font-weight="600">Change code</text>
+        </svg>
+      </div>
+      <p style="margin-top: 14px;">In the code, these are the values of <code>enum State</code>. "Change code" is really three states in a row (<code>CHANGE_OLD</code>, <code>CHANGE_NEW</code>, <code>CHANGE_REPEAT</code>), one for each step.</p>
+    </section>
+
+    <!-- ================= CODE ================= -->
+    <section id="code" aria-labelledby="code-h">
+      <h2 id="code-h"><span class="num">07</span>The code</h2>
+      <p class="sub">The full sketch. Paste it into the Arduino IDE, pick <strong>Tools → Board → Arduino Uno</strong> and the right port, then upload.</p>
+      <div class="code-box">
+        <div class="code-head">
+          <span class="mono">security_system.ino</span>
+          <div class="actions">
+            <button type="button" data-copy="mainCode">Copy</button>
+            <a href="security_system/security_system.ino" download>Download</a>
+          </div>
+        </div>
+        <pre class="tall"><code class="language-arduino" id="mainCode">#include &lt;Wire.h&gt;
+#include &lt;LiquidCrystal_I2C.h&gt;
+#include &lt;Servo.h&gt;
+#include &lt;Keypad.h&gt;
+#include &lt;EEPROM.h&gt;
+
+// Pins
+const int trigPin   = 10;
+const int echoPin   = 11;
+const int buzzer    = 12;
+const int servoPin  = A3;
+const int buttonPin = A2;
+const int greenLED  = A0;
+const int redLED    = A1;
+
+// Settings
+const int  TRIGGER_DISTANCE_CM = 20;
+const byte READINGS_TO_TRIGGER = 3;          // close readings in a row before alarm
+const unsigned long SENSOR_INTERVAL = 100;   // ms between sensor pings
+const unsigned long EXIT_DELAY      = 5000;  // time to step away after arming
+const unsigned long ENTRY_DELAY     = 10000; // time to type the code after motion
+const unsigned long ENTRY_TIMEOUT   = 8000;  // clear half-typed code after this
+const byte MAX_ATTEMPTS = 3;
+const unsigned long LOCKOUT_TIMES[] = {10000, 30000, 60000};  // gets longer each time
+const byte LOCKOUT_LEVELS = 3;
+const byte MIN_CODE_LEN = 4;
+const byte MAX_CODE_LEN = 8;
+const bool HIDE_CODE = false;                // true = show **** instead of digits
+
+// EEPROM layout for the saved code
+const int  EE_MAGIC_ADDR = 0;
+const byte EE_MAGIC      = 0x42;
+const int  EE_LEN_ADDR   = 1;
+const int  EE_CODE_ADDR  = 2;
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+Servo myServo;
+
+// Keypad
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+  {&#39;1&#39;,&#39;2&#39;,&#39;3&#39;,&#39;A&#39;},
+  {&#39;4&#39;,&#39;5&#39;,&#39;6&#39;,&#39;B&#39;},
+  {&#39;7&#39;,&#39;8&#39;,&#39;9&#39;,&#39;C&#39;},
+  {&#39;*&#39;,&#39;0&#39;,&#39;#&#39;,&#39;D&#39;}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6};
+byte colPins[COLS] = {5, 4, 3, 2};
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+// Passwords
+const String DEFAULT_ARM_PASSWORD = &quot;1234&quot;;
+const String ALERT_PASSWORD       = &quot;2468&quot;;
+String armPassword = DEFAULT_ARM_PASSWORD;   // loaded from EEPROM at startup
+String entered = &quot;&quot;;
+String newCode = &quot;&quot;;
+
+// System states
+enum State { DISARMED, ARMED, ENTRY, ALERT, CONFIRM, CHANGE_OLD, CHANGE_NEW, CHANGE_REPEAT };
+State state = ARMED;
+
+bool resetRequested = false;   // button pressed during alarm -&gt; arm code resets it
+byte failedAttempts = 0;
+byte lockoutLevel = 0;
+bool lockedOut = false;
+unsigned long lockoutStart = 0;
+unsigned long lockoutDuration = 0;
+unsigned long lastKeyTime = 0;
+unsigned long armedAt = 0;
+unsigned long entryStart = 0;
+unsigned long alertStart = 0;
+unsigned long lastSensorTime = 0;
+byte closeReadings = 0;
+unsigned long messageStart = 0;
+unsigned long messageDuration = 0;   // 0 = no temporary message on screen
+bool notifiedPending = false;
+bool lastButtonState = HIGH;
+
+// ---------- Sounds ----------
+
+struct Note { unsigned int freq; unsigned int ms; };
+const Note CLICK[] = {{2000, 30}};
+const Note GOOD[]  = {{1500, 80}, {2000, 80}, {2600, 120}};
+const Note BAD[]   = {{400, 200}, {250, 400}};
+const Note DENY[]  = {{200, 80}};
+const Note WARN[]  = {{1000, 100}};
+
+const Note* melody = nullptr;
+byte melodyLen = 0;
+byte melodyIndex = 0;
+unsigned long noteStart = 0;
+bool sirenOn = false;
+unsigned long lastSirenUpdate = 0;
+unsigned long lastWarnBeep = 0;
+
+#define PLAY(m) playSound(m, sizeof(m) / sizeof(m[0]))
+
+void playSound(const Note* m, byte len) {
+  melody = m;
+  melodyLen = len;
+  melodyIndex = 0;
+  noteStart = millis();
+  tone(buzzer, m[0].freq, m[0].ms);
+}
+
+// ---------- Setup &amp; loop ----------
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(greenLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+  myServo.attach(servoPin);
+  myServo.write(0);
+  delay(10);
+
+  // Hold the button while powering on to reset a forgotten code
+  if (digitalRead(buttonPin) == LOW) {
+    armPassword = DEFAULT_ARM_PASSWORD;
+    saveCode();
+    printLine(0, &quot;Code Reset To&quot;);
+    printLine(1, &quot;Default: &quot; + DEFAULT_ARM_PASSWORD);
+    delay(2000);
+  } else {
+    loadCode();
+  }
+
+  printLine(0, &quot;Security System&quot;);
+  printLine(1, &quot;Starting...&quot;);
+  delay(2000);   // the only other blocking delay, at boot
+
+  lastButtonState = digitalRead(buttonPin);
+  setState(ARMED);
+  showStatus();
+}
+
+void loop() {
+  checkButton();
+  checkKeypad();
+  checkSensor();
+  updateEntryDelay();
+  updateSound();
+  updateLEDs();
+  updateScreenTimers();
+}
+
+void setState(State s) {
+  bool sirenState = (s == ALERT || s == CONFIRM);
+  if (sirenOn &amp;&amp; !sirenState) {
+    noTone(buzzer);
+    sirenOn = false;
+  }
+  if (s == ALERT &amp;&amp; state != CONFIRM) {
+    alertStart = millis();
+    resetRequested = false;
+  }
+  if (s == ARMED) armedAt = millis();
+  if (s == ENTRY) {
+    entryStart = millis();
+    lastWarnBeep = 0;
+  }
+
+  state = s;
+  entered = &quot;&quot;;
+  closeReadings = 0;
+  myServo.write((s == ARMED || s == ENTRY) ? 0 : 90);
+}
+
+bool isChangeState() {
+  return state == CHANGE_OLD || state == CHANGE_NEW || state == CHANGE_REPEAT;
+}
+
+// ---------- Inputs ----------
+
+void checkButton() {
+  static unsigned long lastChange = 0;
+  bool reading = digitalRead(buttonPin);
+  if (reading != lastButtonState &amp;&amp; millis() - lastChange &gt; 50) {
+    lastChange = millis();
+    lastButtonState = reading;
+    if (reading == LOW) {
+      onButtonPress();
+    }
+  }
+}
+
+void onButtonPress() {
+  switch (state) {
+    case DISARMED:
+      // Arming is always safe, so no code needed
+      setState(ARMED);
+      PLAY(GOOD);
+      showMessage(&quot;Button Pressed&quot;, &quot;System Armed&quot;, 1500);
+      break;
+    case ALERT:
+      // Silencing the alarm needs the arm code
+      resetRequested = true;
+      entered = &quot;&quot;;
+      PLAY(CLICK);
+      showStatus();
+      break;
+    default:
+      PLAY(DENY);
+      showMessage(&quot;Button Locked&quot;, &quot;Use the Code&quot;, 1500);
+      break;
+  }
+}
+
+void checkKeypad() {
+  char key = keypad.getKey();
+  if (!key) return;
+
+  if (lockedOut) {
+    PLAY(DENY);
+    return;
+  }
+
+  lastKeyTime = millis();
+  PLAY(CLICK);
+
+  if (state == CONFIRM) {
+    handleConfirmation(key);
+  } else {
+    handleCodeKey(key);
+  }
+}
+
+void checkSensor() {
+  if (state != ARMED) return;
+  if (millis() - armedAt &lt; EXIT_DELAY) return;
+  if (millis() - lastSensorTime &lt; SENSOR_INTERVAL) return;
+  lastSensorTime = millis();
+
+  long distance = getDistance();
+  if (distance &gt; 0 &amp;&amp; distance &lt; TRIGGER_DISTANCE_CM) {
+    closeReadings++;
+    if (closeReadings &gt;= READINGS_TO_TRIGGER) {
+      setState(ENTRY);
+      messageDuration = 0;
+      showStatus();
+    }
+  } else {
+    closeReadings = 0;
+  }
+}
+
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 25000);
+  if (duration == 0) return -1;   // no echo
+  return duration / 58;           // cm
+}
+
+// ---------- Keypad logic ----------
+
+void handleCodeKey(char key) {
+  if (key == &#39;*&#39;) {
+    if (entered.length() == 0 &amp;&amp; isChangeState()) {
+      setState(DISARMED);
+      showMessage(&quot;Code Change&quot;, &quot;Cancelled&quot;, 1500);
+      return;
+    }
+    entered = &quot;&quot;;
+    showStatus();
+    return;
+  }
+
+  if (key == &#39;A&#39; &amp;&amp; state == DISARMED &amp;&amp; entered.length() == 0) {
+    setState(CHANGE_OLD);
+    messageDuration = 0;
+    showStatus();
+    return;
+  }
+
+  if (key == &#39;#&#39;) {
+    if (entered.length() &gt; 0) submitCode();
+    return;
+  }
+
+  if (entered.length() &lt; MAX_CODE_LEN) {
+    entered += key;
+    messageDuration = 0;
+    notifiedPending = false;
+    showStatus();
+  }
+}
+
+void submitCode() {
+  String code = entered;
+  entered = &quot;&quot;;
+
+  switch (state) {
+    case ALERT:
+      if (code == ALERT_PASSWORD) {
+        codeAccepted();
+        setState(CONFIRM);
+        showStatus();
+      } else if (resetRequested &amp;&amp; code == armPassword) {
+        codeAccepted();
+        setState(ARMED);
+        showMessage(&quot;Alarm Reset&quot;, &quot;System Armed&quot;, 1500);
+      } else {
+        wrongCode();
+      }
+      break;
+
+    case DISARMED:
+    case ARMED:
+    case ENTRY:
+      if (code == armPassword) {
+        bool arming = (state == DISARMED);
+        codeAccepted();
+        setState(arming ? ARMED : DISARMED);
+        showMessage(&quot;Access Granted&quot;, arming ? &quot;System Armed&quot; : &quot;System Disarmed&quot;, 1500);
+      } else {
+        wrongCode();
+      }
+      break;
+
+    case CHANGE_OLD:
+      if (code == armPassword) {
+        codeAccepted();
+        setState(CHANGE_NEW);
+        showStatus();
+      } else {
+        wrongCode();
+      }
+      break;
+
+    case CHANGE_NEW:
+      if (code.length() &lt; MIN_CODE_LEN || !allDigits(code)) {
+        PLAY(BAD);
+        showMessage(&quot;Use 4-8 Digits&quot;, &quot;Try Again&quot;, 1500);
+      } else if (code == ALERT_PASSWORD) {
+        PLAY(BAD);
+        showMessage(&quot;Can&#39;t Use That&quot;, &quot;Try Again&quot;, 1500);
+      } else {
+        newCode = code;
+        setState(CHANGE_REPEAT);
+        showStatus();
+      }
+      break;
+
+    case CHANGE_REPEAT:
+      if (code == newCode) {
+        armPassword = newCode;
+        saveCode();
+        PLAY(GOOD);
+        setState(DISARMED);
+        showMessage(&quot;Code Saved!&quot;, &quot;New Code Active&quot;, 2000);
+      } else {
+        PLAY(BAD);
+        setState(CHANGE_NEW);
+        showMessage(&quot;No Match&quot;, &quot;Start Again&quot;, 1500);
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+void handleConfirmation(char key) {
+  if (key == &#39;1&#39;) {
+    setState(DISARMED);
+    PLAY(GOOD);
+    showMessage(&quot;False Alarm&quot;, &quot;System Disarmed&quot;, 2000);
+  } else if (key == &#39;2&#39;) {
+    setState(DISARMED);
+    showMessage(&quot;Calling 911...&quot;, &quot;&quot;, 2000);
+    notifiedPending = true;   // shows &quot;Authorities Notified&quot; next
+  }
+}
+
+void codeAccepted() {
+  failedAttempts = 0;
+  lockoutLevel = 0;
+  PLAY(GOOD);
+}
+
+void wrongCode() {
+  failedAttempts++;
+  PLAY(BAD);
+  if (failedAttempts &gt;= MAX_ATTEMPTS) {
+    failedAttempts = 0;
+    lockoutDuration = LOCKOUT_TIMES[lockoutLevel];
+    if (lockoutLevel &lt; LOCKOUT_LEVELS - 1) lockoutLevel++;
+    lockedOut = true;
+    lockoutStart = millis();
+    if (isChangeState()) setState(DISARMED);
+    showMessage(&quot;Too Many Tries&quot;, &quot;Locked &quot; + String(lockoutDuration / 1000) + &quot; sec&quot;, 2000);
+  } else {
+    showMessage(&quot;Wrong Password&quot;, &quot;Tries: &quot; + String(failedAttempts) + &quot;/&quot; + String(MAX_ATTEMPTS), 1500);
+  }
+}
+
+bool allDigits(const String &amp;s) {
+  for (unsigned int i = 0; i &lt; s.length(); i++) {
+    if (s[i] &lt; &#39;0&#39; || s[i] &gt; &#39;9&#39;) return false;
+  }
+  return true;
+}
+
+// ---------- Saved code (EEPROM) ----------
+
+void loadCode() {
+  if (EEPROM.read(EE_MAGIC_ADDR) != EE_MAGIC) return;   // nothing saved yet
+  byte len = EEPROM.read(EE_LEN_ADDR);
+  if (len &lt; MIN_CODE_LEN || len &gt; MAX_CODE_LEN) return;
+  String code = &quot;&quot;;
+  for (byte i = 0; i &lt; len; i++) {
+    code += (char)EEPROM.read(EE_CODE_ADDR + i);
+  }
+  if (allDigits(code)) armPassword = code;
+}
+
+void saveCode() {
+  EEPROM.update(EE_LEN_ADDR, armPassword.length());
+  for (byte i = 0; i &lt; armPassword.length(); i++) {
+    EEPROM.update(EE_CODE_ADDR + i, armPassword[i]);
+  }
+  EEPROM.update(EE_MAGIC_ADDR, EE_MAGIC);
+}
+
+// ---------- Alarm, sound &amp; LEDs ----------
+
+void triggerAlert() {
+  setState(ALERT);
+  notifiedPending = false;
+  showMessage(&quot;!! ALERT !!&quot;, &quot;Intruder Alert!&quot;, 3000);
+}
+
+void updateEntryDelay() {
+  if (state != ENTRY) return;
+  unsigned long elapsed = millis() - entryStart;
+  if (elapsed &gt;= ENTRY_DELAY) {
+    triggerAlert();
+    return;
+  }
+  // Warning beeps, faster in the last 3 seconds
+  unsigned long beepEvery = (ENTRY_DELAY - elapsed &lt; 3000) ? 250 : 1000;
+  if (melody == nullptr &amp;&amp; millis() - lastWarnBeep &gt;= beepEvery) {
+    lastWarnBeep = millis();
+    PLAY(WARN);
+  }
+}
+
+void updateSound() {
+  // Siren: sweeps 600 Hz -&gt; 1600 Hz -&gt; 600 Hz every second
+  if (state == ALERT || state == CONFIRM) {
+    melody = nullptr;
+    if (millis() - lastSirenUpdate &gt;= 10) {
+      lastSirenUpdate = millis();
+      unsigned long phase = (millis() - alertStart) % 1000;
+      unsigned int freq = (phase &lt; 500) ? 600 + phase * 2 : 600 + (1000 - phase) * 2;
+      tone(buzzer, freq);
+      sirenOn = true;
+    }
+    return;
+  }
+
+  // Short sound effects
+  if (melody != nullptr &amp;&amp; millis() - noteStart &gt;= melody[melodyIndex].ms + 20) {
+    melodyIndex++;
+    if (melodyIndex &gt;= melodyLen) {
+      melody = nullptr;
+    } else {
+      noteStart = millis();
+      tone(buzzer, melody[melodyIndex].freq, melody[melodyIndex].ms);
+    }
+  }
+}
+
+void updateLEDs() {
+  bool blink = (millis() / 250) % 2;
+  bool red = (state == ALERT || state == CONFIRM) || (state == ENTRY &amp;&amp; blink);
+  digitalWrite(greenLED, state == ARMED ? HIGH : LOW);  // Armed = green
+  digitalWrite(redLED, red ? HIGH : LOW);               // Entry = blinking red, Alert = red
+  // Disarmed = both off
+}
+
+// ---------- Screen ----------
+
+// Prints a full 16-char line (pads with spaces, no flicker from lcd.clear())
+void printLine(byte row, const String &amp;text) {
+  lcd.setCursor(0, row);
+  lcd.print(text);
+  for (int i = text.length(); i &lt; 16; i++) {
+    lcd.print(&#39; &#39;);
+  }
+}
+
+void showMessage(const String &amp;line1, const String &amp;line2, unsigned long ms) {
+  printLine(0, line1);
+  printLine(1, line2);
+  messageStart = millis();
+  messageDuration = ms;
+}
+
+unsigned long entrySecsLeft() {
+  unsigned long elapsed = millis() - entryStart;
+  if (elapsed &gt;= ENTRY_DELAY) return 0;
+  return (ENTRY_DELAY - elapsed + 999) / 1000;
+}
+
+unsigned long lockSecondsLeft() {
+  unsigned long elapsed = millis() - lockoutStart;
+  if (elapsed &gt;= lockoutDuration) return 0;
+  return (lockoutDuration - elapsed + 999) / 1000;
+}
+
+String topLine() {
+  switch (state) {
+    case CONFIRM:       return &quot;1 = False Alarm&quot;;
+    case CHANGE_OLD:    return &quot;Change: Old Code&quot;;
+    case CHANGE_NEW:    return &quot;Change: New Code&quot;;
+    case CHANGE_REPEAT: return &quot;Repeat New Code&quot;;
+    case ENTRY:         return &quot;Motion! &quot; + String(entrySecsLeft()) + &quot;s left&quot;;
+    case ALERT:         return &quot;!! ALERT !!&quot;;
+    case ARMED:         return lockedOut ? &quot;System Locked&quot; : &quot;System Armed&quot;;
+    default:            return lockedOut ? &quot;System Locked&quot; : &quot;System Disarmed&quot;;
+  }
+}
+
+String bottomLine() {
+  if (state == CONFIRM) return &quot;2 = Real Threat&quot;;
+  if (lockedOut) return &quot;Wait &quot; + String(lockSecondsLeft()) + &quot; sec&quot;;
+
+  if (entered.length() &gt; 0) {
+    String shown = entered;
+    if (HIDE_CODE) {
+      shown = &quot;&quot;;
+      for (unsigned int i = 0; i &lt; entered.length(); i++) shown += &#39;*&#39;;
+    }
+    return &quot;Code: &quot; + shown;
+  }
+
+  switch (state) {
+    case ALERT:    return resetRequested ? &quot;Code to Reset&quot; : &quot;Enter Alert Code&quot;;
+    case DISARMED: return &quot;Code / A=Change&quot;;
+    case CHANGE_OLD:
+    case CHANGE_NEW:
+    case CHANGE_REPEAT: return &quot;# = OK  * = Back&quot;;
+    default:       return &quot;Enter Code&quot;;
+  }
+}
+
+void showStatus() {
+  printLine(0, topLine());
+  printLine(1, bottomLine());
+}
+
+void updateScreenTimers() {
+  // Temporary message finished -&gt; back to the normal screen
+  if (messageDuration &gt; 0 &amp;&amp; millis() - messageStart &gt;= messageDuration) {
+    messageDuration = 0;
+    if (notifiedPending) {
+      notifiedPending = false;
+      showMessage(&quot;Authorities&quot;, &quot;Notified&quot;, 3000);
+    } else {
+      showStatus();
+    }
+  }
+
+  // Half-typed code timed out
+  if (entered.length() &gt; 0 &amp;&amp; millis() - lastKeyTime &gt;= ENTRY_TIMEOUT) {
+    entered = &quot;&quot;;
+    showStatus();
+  }
+
+  // Lockout finished
+  if (lockedOut &amp;&amp; millis() - lockoutStart &gt;= lockoutDuration) {
+    lockedOut = false;
+    if (messageDuration == 0) showStatus();
+  }
+
+  // Keep countdowns on screen up to date
+  static unsigned long lastRedraw = 0;
+  if ((lockedOut || state == ENTRY) &amp;&amp; messageDuration == 0 &amp;&amp; millis() - lastRedraw &gt;= 250) {
+    lastRedraw = millis();
+    showStatus();
+  }
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= EXPLAINED ================= -->
+    <section id="explained" aria-labelledby="exp-h">
+      <h2 id="exp-h"><span class="num">08</span>Code explained</h2>
+      <p class="sub">The sketch, one part at a time. Open any section.</p>
+
+      <details class="acc" open>
+        <summary>The big idea: a loop that never waits <span class="fn">loop()</span></summary>
+        <div class="body">
+          <p>Most beginner sketches use <code>delay()</code>, which freezes the whole Arduino. While it's frozen, keypresses are missed, the siren stops changing pitch and the sensor isn't checked. This sketch never pauses in <code>loop()</code>. Every pass is quick, and each job only does something when it's time to:</p>
+<pre><code class="language-arduino">void loop() {
+  checkButton();        // was the button just pressed?
+  checkKeypad();        // was a key just pressed?
+  checkSensor();        // time for another distance reading?
+  updateEntryDelay();   // entry countdown + warning beeps
+  updateSound();        // siren or the next note of a sound effect
+  updateLEDs();
+  updateScreenTimers(); // put the screen back after a message
+}</code></pre>
+          <p>"Is it time yet?" is checked with <code>millis()</code>, the number of milliseconds since the board started:</p>
+<pre><code class="language-arduino">if (millis() - lastSensorTime &lt; SENSOR_INTERVAL) return;  // not yet
+lastSensorTime = millis();                                  // it's time: remember when</code></pre>
+          <p>Writing it as <code>millis() - start</code> (rather than comparing to a future time) keeps it working when <code>millis()</code> rolls back to 0 after about 49 days.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>States <span class="fn">enum State, setState()</span></summary>
+        <div class="body">
+          <p>Instead of lots of <code>true</code>/<code>false</code> flags, the system has one variable saying what it's doing:</p>
+<pre><code class="language-arduino">enum State { DISARMED, ARMED, ENTRY, ALERT, CONFIRM, CHANGE_OLD, CHANGE_NEW, CHANGE_REPEAT };</code></pre>
+          <p>All changes go through <code>setState()</code>, so the side effects happen in one place: the siren stops when leaving an alarm, the timers start, the typed code is cleared and the servo moves.</p>
+<pre><code class="language-arduino">myServo.write((s == ARMED || s == ENTRY) ? 0 : 90);  // locked while armed</code></pre>
+          <p>The screen, LEDs and sound all look at <code>state</code> to decide what to show, so they can never disagree with each other.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Keypad and codes <span class="fn">handleCodeKey(), submitCode()</span></summary>
+        <div class="body">
+          <p><code>checkKeypad()</code> reads one key, plays a click and passes it on. <code>handleCodeKey()</code> deals with the special keys:</p>
+          <ul class="tight">
+            <li><kbd>*</kbd> clears the typed code (or cancels a code change).</li>
+            <li><kbd>A</kbd> starts a code change, but only while disarmed and with nothing typed.</li>
+            <li><kbd>#</kbd> calls <code>submitCode()</code>.</li>
+            <li>Anything else is added to <code>entered</code>, up to 8 characters.</li>
+          </ul>
+          <p><code>submitCode()</code> is a <code>switch</code> on the current state, because the same code means different things at different times. <code>1234</code> disarms while armed, arms while disarmed, and does nothing during the siren unless the button was pressed first.</p>
+          <p>If you start typing and walk away, <code>updateScreenTimers()</code> clears the half-typed code after 8 seconds.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Wrong codes and lockouts <span class="fn">wrongCode()</span></summary>
+        <div class="body">
+          <p>Each wrong code adds one to <code>failedAttempts</code>. At 3, the keypad locks for a time taken from a list that gets longer each time:</p>
+<pre><code class="language-arduino">const unsigned long LOCKOUT_TIMES[] = {10000, 30000, 60000};</code></pre>
+          <p>While <code>lockedOut</code> is true, <code>checkKeypad()</code> plays a low "denied" blip and ignores the key. Nothing else stops: if someone guesses wrong 3 times during the entry countdown, the countdown keeps going and the siren still starts. A correct code resets both the attempts and the lockout level.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Motion sensor <span class="fn">checkSensor(), getDistance()</span></summary>
+        <div class="body">
+          <p>The HC-SR04 sends out a 10&nbsp;µs ultrasonic "ping" and holds Echo HIGH for as long as the sound took to bounce back. Sound travels about 1&nbsp;cm every 29&nbsp;µs, and it goes there and back, so <strong>distance in cm = time ÷ 58</strong>.</p>
+<pre><code class="language-arduino">long duration = pulseIn(echoPin, HIGH, 25000);  // give up after 25 ms (~4 m)
+if (duration == 0) return -1;                   // no echo
+return duration / 58;</code></pre>
+          <p>The sensor is read every 100&nbsp;ms, and only when armed and past the 5-second exit delay. A reading under 20&nbsp;cm adds 1 to <code>closeReadings</code>, and anything else resets it to 0. It takes 3 in a row to start the entry countdown, which filters out random bad readings.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Sounds and the siren <span class="fn">PLAY(), updateSound()</span></summary>
+        <div class="body">
+          <p>Each sound effect is a short list of notes, each with a frequency and a length:</p>
+<pre><code class="language-arduino">const Note GOOD[] = {{1500, 80}, {2000, 80}, {2600, 120}};  // rising chirp
+PLAY(GOOD);</code></pre>
+          <p><code>PLAY()</code> starts the first note. On each pass of the loop, <code>updateSound()</code> checks whether that note has finished and starts the next one. The sound plays without stopping anything else.</p>
+          <p>The siren works out its pitch from the time. Over each second the pitch climbs from 600 to 1600&nbsp;Hz and falls back:</p>
+<pre><code class="language-arduino">unsigned long phase = (millis() - alertStart) % 1000;   // 0..999
+unsigned int freq = (phase &lt; 500) ? 600 + phase * 2 : 600 + (1000 - phase) * 2;</code></pre>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>Saving the code <span class="fn">loadCode(), saveCode()</span></summary>
+        <div class="body">
+          <p>The Uno has 1&nbsp;KB of EEPROM, memory that keeps its contents with the power off. The code is stored like this:</p>
+          <div class="table-wrap" style="margin-bottom: 14px;">
+            <table>
+              <thead><tr><th>Address</th><th>Holds</th></tr></thead>
+              <tbody>
+                <tr><td class="pin">0</td><td>A "magic" byte, <code>0x42</code>, meaning "a code has been saved here"</td></tr>
+                <tr><td class="pin">1</td><td>Length of the code (4–8)</td></tr>
+                <tr><td class="pin">2–9</td><td>The digits</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>A brand-new board has <code>0xFF</code> everywhere, so without the magic byte the code would load garbage. <code>EEPROM.update()</code> only writes a byte if it changed, which saves wear (each byte lasts about 100,000 writes).</p>
+          <p>In <code>setup()</code>, if the button is held at power-on, the code is reset to <code>1234</code> and saved.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>The screen <span class="fn">printLine(), showMessage(), topLine()</span></summary>
+        <div class="body">
+          <p><code>lcd.clear()</code> makes the screen flash. <code>printLine()</code> overwrites a line instead and pads it with spaces to 16 characters, so old text never peeks through.</p>
+          <p>There are two kinds of screen:</p>
+          <ul class="tight">
+            <li><strong>Status screens</strong>, built by <code>topLine()</code> and <code>bottomLine()</code> from the current state (for example <code>System Armed</code> / <code>Enter Code</code>).</li>
+            <li><strong>Messages</strong> like <code>Wrong Password</code>, shown by <code>showMessage()</code> for a set time. When the time is up, <code>updateScreenTimers()</code> puts the status screen back.</li>
+          </ul>
+          <p>Countdowns (entry delay and lockout) are redrawn 4 times a second, so the seconds tick down live. <code>notifiedPending</code> lets <code>Calling 911...</code> be followed by a second message, <code>Authorities Notified</code>.</p>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>LEDs and button <span class="fn">updateLEDs(), checkButton()</span></summary>
+        <div class="body">
+          <p><code>updateLEDs()</code> runs every loop and sets both LEDs from the state. The entry-delay blink uses <code>(millis() / 250) % 2</code>, which flips between 0 and 1 every 250&nbsp;ms.</p>
+          <p>The button is <em>debounced</em>. A real button "bounces" on and off for a few milliseconds when pressed, so changes within 50&nbsp;ms of the last one are ignored. It only acts on a <em>press</em> (HIGH → LOW), so holding it down doesn't repeat.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="settings" aria-labelledby="set-h">
+      <h2 id="set-h"><span class="num">09</span>Settings you can change</h2>
+      <p class="sub">All at the top of the sketch. Change a number, upload again.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="pin">TRIGGER_DISTANCE_CM</td><td>20</td><td>Anything closer than this counts as motion.</td></tr>
+            <tr><td class="pin">READINGS_TO_TRIGGER</td><td>3</td><td>Close readings needed in a row. Raise it if you get false alarms.</td></tr>
+            <tr><td class="pin">SENSOR_INTERVAL</td><td>100 ms</td><td>Time between distance readings.</td></tr>
+            <tr><td class="pin">EXIT_DELAY</td><td>5000 ms</td><td>Time to leave after arming.</td></tr>
+            <tr><td class="pin">ENTRY_DELAY</td><td>10000 ms</td><td>Time to type the code before the siren.</td></tr>
+            <tr><td class="pin">ENTRY_TIMEOUT</td><td>8000 ms</td><td>Clears a half-typed code after this long.</td></tr>
+            <tr><td class="pin">MAX_ATTEMPTS</td><td>3</td><td>Wrong codes before a lockout.</td></tr>
+            <tr><td class="pin">LOCKOUT_TIMES</td><td>10, 30, 60 s</td><td>Lockout lengths, getting longer each time.</td></tr>
+            <tr><td class="pin">MIN_CODE_LEN / MAX_CODE_LEN</td><td>4 / 8</td><td>Allowed length for a new code.</td></tr>
+            <tr><td class="pin">HIDE_CODE</td><td>false</td><td>Set to <code>true</code> to show <code>****</code> instead of the digits.</td></tr>
+            <tr><td class="pin">DEFAULT_ARM_PASSWORD</td><td>"1234"</td><td>The code before any change, and after a button reset.</td></tr>
+            <tr><td class="pin">ALERT_PASSWORD</td><td>"2468"</td><td>The code that stops the siren.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= DEBUG ================= -->
+    <section id="debug" aria-labelledby="debug-h">
+      <h2 id="debug-h"><span class="num">10</span>Debugging</h2>
+      <p class="sub">Start with the self-test sketch. If a part fails it, pick the problem below for fixes.</p>
+
+      <h3>Step 1: Run the self-test</h3>
+      <p>This separate sketch uses the same wiring and checks every part, one at a time. Upload it, open <strong>Tools → Serial Monitor</strong> at <strong>9600 baud</strong>, and watch:</p>
+      <ol class="tight">
+        <li><strong>I2C scan.</strong> Prints the LCD's address. If it isn't <code>0x27</code>, change it in both sketches.</li>
+        <li><strong>LCD.</strong> Should show <code>Self-Test OK</code> and <code>0123456789ABCDEF</code>.</li>
+        <li><strong>LEDs.</strong> Green, then red, each for under a second.</li>
+        <li><strong>Buzzer.</strong> Three tones going up. If they all sound the same, it's an active buzzer.</li>
+        <li><strong>Servo.</strong> Swings 0° → 90° → 0°.</li>
+        <li><strong>Live test.</strong> Every key you press is shown on the LCD and in the Serial Monitor. The bottom line shows the distance. The green LED lights while the button is held, and the red LED lights when something is closer than 20&nbsp;cm.</li>
+      </ol>
+      <div class="code-box" style="margin-top: 14px;">
+        <div class="code-head">
+          <span class="mono">self_test.ino</span>
+          <div class="actions">
+            <button type="button" data-copy="selfTestCode">Copy</button>
+            <a href="self_test/self_test.ino" download>Download</a>
+          </div>
+        </div>
+        <pre class="tall"><code class="language-arduino" id="selfTestCode">// Hardware self-test for the Arduino Keypad Security System.
+// Upload this, open the Serial Monitor at 9600 baud, and follow along.
+// It checks every part one by one, then runs a live test you can poke at.
+
+#include &lt;Wire.h&gt;
+#include &lt;LiquidCrystal_I2C.h&gt;
+#include &lt;Servo.h&gt;
+#include &lt;Keypad.h&gt;
+
+// Same pins as the main sketch
+const int trigPin   = 10;
+const int echoPin   = 11;
+const int buzzer    = 12;
+const int servoPin  = A3;
+const int buttonPin = A2;
+const int greenLED  = A0;
+const int redLED    = A1;
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);   // change to 0x3F if the scan below finds that
+Servo myServo;
+
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+  {&#39;1&#39;,&#39;2&#39;,&#39;3&#39;,&#39;A&#39;},
+  {&#39;4&#39;,&#39;5&#39;,&#39;6&#39;,&#39;B&#39;},
+  {&#39;7&#39;,&#39;8&#39;,&#39;9&#39;,&#39;C&#39;},
+  {&#39;*&#39;,&#39;0&#39;,&#39;#&#39;,&#39;D&#39;}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6};
+byte colPins[COLS] = {5, 4, 3, 2};
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(greenLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+
+  Serial.println(F(&quot;=== Security System Self-Test ===&quot;));
+
+  // 1. I2C scan: finds the LCD&#39;s address
+  Serial.println(F(&quot;[1] Scanning I2C bus...&quot;));
+  Wire.begin();
+  byte found = 0;
+  for (byte addr = 1; addr &lt; 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.print(F(&quot;    Found device at 0x&quot;));
+      if (addr &lt; 16) Serial.print(&#39;0&#39;);
+      Serial.println(addr, HEX);
+      found++;
+    }
+  }
+  if (found == 0) {
+    Serial.println(F(&quot;    Nothing found! Check SDA-&gt;A4, SCL-&gt;A5, VCC-&gt;5V, GND-&gt;GND.&quot;));
+  }
+
+  // 2. LCD
+  Serial.println(F(&quot;[2] LCD: should say &#39;Self-Test OK&#39;&quot;));
+  lcd.init();
+  lcd.backlight();
+  lcd.print(F(&quot;Self-Test OK&quot;));
+  lcd.setCursor(0, 1);
+  lcd.print(F(&quot;0123456789ABCDEF&quot;));
+  delay(1500);
+
+  // 3. LEDs
+  Serial.println(F(&quot;[3] Green LED on&quot;));
+  digitalWrite(greenLED, HIGH);
+  delay(800);
+  digitalWrite(greenLED, LOW);
+  Serial.println(F(&quot;    Red LED on&quot;));
+  digitalWrite(redLED, HIGH);
+  delay(800);
+  digitalWrite(redLED, LOW);
+
+  // 4. Buzzer: three rising tones (a passive buzzer changes pitch, an active one won&#39;t)
+  Serial.println(F(&quot;[4] Buzzer: low, middle, high tone&quot;));
+  tone(buzzer, 500, 250);  delay(350);
+  tone(buzzer, 1000, 250); delay(350);
+  tone(buzzer, 2000, 250); delay(350);
+
+  // 5. Servo
+  Serial.println(F(&quot;[5] Servo: 0 -&gt; 90 -&gt; 0 degrees&quot;));
+  myServo.attach(servoPin);
+  myServo.write(0);   delay(600);
+  myServo.write(90);  delay(600);
+  myServo.write(0);   delay(600);
+
+  Serial.println(F(&quot;[6] Live test: press keys, press the button, wave at the sensor.&quot;));
+  Serial.println(F(&quot;    Green LED = button held, Red LED = something under 20 cm.&quot;));
+  lcd.clear();
+  lcd.print(F(&quot;Press a key...&quot;));
+}
+
+void loop() {
+  // Keypad
+  char key = keypad.getKey();
+  if (key) {
+    Serial.print(F(&quot;Key: &quot;));
+    Serial.println(key);
+    tone(buzzer, 2000, 30);
+    lcd.setCursor(0, 0);
+    lcd.print(F(&quot;Key: &quot;));
+    lcd.print(key);
+    lcd.print(F(&quot;          &quot;));
+  }
+
+  // Button
+  static bool lastButton = HIGH;
+  bool button = digitalRead(buttonPin);
+  digitalWrite(greenLED, button == LOW ? HIGH : LOW);
+  if (button != lastButton) {
+    lastButton = button;
+    Serial.println(button == LOW ? F(&quot;Button: PRESSED&quot;) : F(&quot;Button: released&quot;));
+  }
+
+  // Ultrasonic sensor
+  static unsigned long lastPing = 0;
+  if (millis() - lastPing &gt;= 500) {
+    lastPing = millis();
+    long distance = getDistance();
+    digitalWrite(redLED, (distance &gt; 0 &amp;&amp; distance &lt; 20) ? HIGH : LOW);
+
+    lcd.setCursor(0, 1);
+    lcd.print(F(&quot;Dist: &quot;));
+    if (distance &lt; 0) lcd.print(F(&quot;--&quot;));
+    else lcd.print(distance);
+    lcd.print(F(&quot; cm      &quot;));
+
+    Serial.print(F(&quot;Distance: &quot;));
+    if (distance &lt; 0) Serial.println(F(&quot;no echo&quot;));
+    else { Serial.print(distance); Serial.println(F(&quot; cm&quot;)); }
+  }
+}
+
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 25000);
+  if (duration == 0) return -1;
+  return duration / 58;
+}</code></pre>
+      </div>
+
+      <h3>Step 2: Find your problem</h3>
+      <div class="ts card" style="padding: 14px;">
+        <div class="ts-list" id="tsList" role="tablist" aria-orientation="vertical" aria-label="Problems"></div>
+        <div class="ts-panel" id="tsPanel" role="tabpanel"></div>
+      </div>
+    </section>
+
+    <!-- ================= EXTRAS ================= -->
+    <section id="extras" aria-labelledby="extras-h">
+      <h2 id="extras-h"><span class="num">11</span>Notes &amp; ideas</h2>
+      <p class="sub">Limits, safety, and where to take it next.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-top: 0;">Limitations</h3>
+          <ul class="tight">
+            <li><strong>It doesn't really call 911.</strong> "Calling 911..." is only a message. The Uno has no internet or phone connection.</li>
+            <li><strong>It's a learning project, not a real alarm.</strong> Unplugging it turns it off, and the board and button are reachable.</li>
+            <li><strong>The sensor only sees straight ahead</strong>, in a cone about 15° wide. Soft things like clothes can absorb the sound and not be seen.</li>
+            <li><strong>Codes are stored in plain text</strong> in EEPROM, and anyone who can hold the button at power-on can reset them.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin-top: 0;">Ideas for upgrades</h3>
+          <ul class="tight">
+            <li><strong>Event log:</strong> print every arm, disarm and alarm to the Serial Monitor with a timestamp.</li>
+            <li><strong>Real notifications:</strong> swap the Uno for an ESP32 and send a phone notification when the alarm goes off.</li>
+            <li><strong>Real clock:</strong> add a DS3231 RTC module to record when each alarm happened.</li>
+            <li><strong>More sensors:</strong> a PIR motion sensor or a magnetic door switch on D13.</li>
+            <li><strong>Battery backup</strong> so pulling the plug doesn't silence it.</li>
+            <li><strong>Hide the code</strong> as it's typed: set <code>HIDE_CODE = true</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Memory use</h3>
+      <p>The Uno has only 2&nbsp;KB of RAM. This sketch uses <code>String</code> for codes and messages, which is easy to read but uses more memory than plain character arrays. If you add lots of features and the board starts acting strangely, look at the RAM figure the IDE prints after compiling. Above about 75%, wrap fixed text in <code>F("...")</code> so it stays in flash memory.</p>
+
+      <h3>Project history</h3>
+      <ul class="tight">
+        <li>Started with a basic arm/disarm keypad, LCD, LEDs, buzzer and servo.</li>
+        <li>Fixed the keypad pin order (the ribbon was reversed).</li>
+        <li>Added clear LCD messages and the alert code with false alarm / real threat.</li>
+        <li>Fixed messages longer than 16 characters, and a bug that showed the alert code on screen.</li>
+        <li>Rewrote it to never use <code>delay()</code> in the loop, so the siren and sensor keep working during messages and lockouts.</li>
+        <li>Added the entry delay, the reset button needing a code, a changeable code saved in EEPROM, sound effects, longer lockouts and the siren.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Arduino Keypad Security System. The code is free to use and change. If you build one, try a different alarm sound or add a sensor.</p>
+    </footer>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-arduino.min.js"></script>
+<script>
+(function () {
+  // ---------- Theme toggle ----------
+  var root = document.documentElement;
+  try {
+    var saved = localStorage.getItem("theme");
+    if (saved) root.setAttribute("data-theme", saved);
+  } catch (e) {}
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    var current = root.getAttribute("data-theme");
+    if (!current) current = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    var next = current === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // ---------- Copy buttons ----------
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = document.getElementById(btn.getAttribute("data-copy")).textContent;
+      var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500); };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(done, function () { btn.textContent = "Select & copy"; });
+      } else {
+        btn.textContent = "Select & copy";
+      }
+    });
+  });
+
+  // ---------- LCD simulator ----------
+  var screens = [
+    { name: "Starting up", l: ["Security System", "Starting..."], g: 0, r: 0, s: "", when: "For 2 seconds after power-on." },
+    { name: "Arming", l: ["System Armed", "Enter Code"], g: 1, r: 0, s: "", when: "Right after start-up or arming. The sensor ignores everything for the first 5 seconds so you can leave." },
+    { name: "Typing a code", l: ["System Armed", "Code: 12"], g: 1, r: 0, s: "click", when: "As you type. Up to 8 characters. Press # to submit or * to clear." },
+    { name: "Correct code", l: ["Access Granted", "System Disarmed"], g: 0, r: 0, s: "chirp", when: "After the right code + #. Shown for 1.5 seconds." },
+    { name: "Disarmed", l: ["System Disarmed", "Code / A=Change"], g: 0, r: 0, s: "", when: "While disarmed. Type the code to arm, or press A to change it." },
+    { name: "Wrong code", l: ["Wrong Password", "Tries: 1/3"], g: 1, r: 0, s: "buzz", when: "After a wrong code + #." },
+    { name: "Lockout", l: ["Too Many Tries", "Locked 10 sec"], g: 1, r: 0, s: "buzz", when: "After the 3rd wrong code. Next time it's 30 s, then 60 s." },
+    { name: "Lockout countdown", l: ["System Locked", "Wait 7 sec"], g: 1, r: 0, s: "", when: "Counts down live. Keys only make a low blip until it ends." },
+    { name: "Motion seen", l: ["Motion! 8s left", "Enter Code"], g: 0, r: 2, s: "beep", when: "Something stayed closer than 20 cm for 3 readings. Type the code before it hits 0." },
+    { name: "Alarm!", l: ["!! ALERT !!", "Intruder Alert!"], g: 0, r: 1, s: "siren", when: "The entry countdown ran out. The siren sweeps up and down." },
+    { name: "Alarm waiting", l: ["!! ALERT !!", "Enter Alert Code"], g: 0, r: 1, s: "siren", when: "3 seconds into the alarm. Type the alert code + #." },
+    { name: "Button in alarm", l: ["!! ALERT !!", "Code to Reset"], g: 0, r: 1, s: "siren", when: "The button was pressed during the alarm. Now the arm code + # resets and re-arms." },
+    { name: "Real or false?", l: ["1 = False Alarm", "2 = Real Threat"], g: 0, r: 1, s: "siren", when: "After the alert code. Press 1 or 2." },
+    { name: "False alarm", l: ["False Alarm", "System Disarmed"], g: 0, r: 0, s: "chirp", when: "After pressing 1." },
+    { name: "Real threat", l: ["Calling 911...", ""], g: 0, r: 0, s: "", when: "After pressing 2. Followed by 'Authorities Notified', then disarmed." },
+    { name: "Change code", l: ["Change: Old Code", "# = OK  * = Back"], g: 0, r: 0, s: "", when: "After pressing A while disarmed. Then 'New Code', then 'Repeat New Code'." },
+    { name: "Code saved", l: ["Code Saved!", "New Code Active"], g: 0, r: 0, s: "chirp", when: "Both new codes matched. It's saved in EEPROM." },
+    { name: "Button blocked", l: ["Button Locked", "Use the Code"], g: 1, r: 0, s: "blip", when: "Button pressed while armed. Disarming always needs the code." }
+  ];
+  var list = document.getElementById("simList");
+  function pad(t) { t = t.slice(0, 16); while (t.length < 16) t += " "; return t; }
+  function setLed(el, v) {
+    el.classList.toggle("on", v > 0);
+    el.classList.toggle("blink", v === 2);
+  }
+  function show(i) {
+    var s = screens[i];
+    document.getElementById("lcd0").textContent = pad(s.l[0]);
+    document.getElementById("lcd1").textContent = pad(s.l[1]);
+    setLed(document.getElementById("ledG"), s.g);
+    setLed(document.getElementById("ledR"), s.r);
+    document.getElementById("sound").textContent = s.s ? "♪ " + s.s : "";
+    document.getElementById("simWhen").textContent = s.when;
+    list.querySelectorAll("button").forEach(function (b, j) { b.setAttribute("aria-pressed", j === i ? "true" : "false"); });
+  }
+  screens.forEach(function (s, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = s.name;
+    b.addEventListener("click", function () { show(i); });
+    list.appendChild(b);
+  });
+  show(1);
+
+  // ---------- Troubleshooter ----------
+  var problems = [
+    { g: "Screen" },
+    { t: "LCD backlight is on but no text", cause: "The contrast is turned all the way down or up.",
+      steps: ["Find the small blue potentiometer on the back of the I2C backpack.", "Turn it slowly with a small screwdriver while the sketch runs until text appears.", "If you only see a row of solid blocks, the LCD isn't getting data. See the next problem."] },
+    { t: "LCD is blank or shows solid blocks", cause: "Wrong I2C address, or SDA/SCL wired wrong.",
+      steps: ["Run the self-test and read the I2C scan in the Serial Monitor.", "If it finds <code>0x3F</code>, change <code>lcd(0x27, 16, 2)</code> to <code>lcd(0x3F, 16, 2)</code> in both sketches.", "If it finds nothing, check SDA → A4, SCL → A5, VCC → 5V, GND → GND.", "Check the backpack's jumper for the backlight is in place."] },
+    { t: "Strange characters on the LCD", cause: "Loose I2C wires, or the board is browning out.",
+      steps: ["Push the SDA and SCL jumpers in firmly. Short wires are better.", "If it happens when the servo moves, see \"Arduino resets when the servo moves\"."] },
+    { g: "Keypad" },
+    { t: "Wrong keys come out", cause: "The ribbon order is reversed or shifted.",
+      steps: ["Run the self-test and press 1, 5, *, A.", "If the results look mirrored, swap the pin arrays: <code>rowPins = {6, 7, 8, 9}</code> and <code>colPins = {2, 3, 4, 5}</code>.", "If rows and columns are mixed up, the ribbon is shifted by one or more pins. Count the 8 wires again from the left."] },
+    { t: "Some keys don't work", cause: "One keypad wire isn't connected.",
+      steps: ["Write down which keys are dead.", "If they're all in one row (for example 4, 5, 6, B), that row's wire is loose. If they're in one column (for example 2, 5, 8, 0), it's that column's wire.", "Re-seat that jumper on both ends."] },
+    { t: "Code is right but says Wrong Password", cause: "The code was changed, or extra keys were typed.",
+      steps: ["Press * first to clear anything typed by accident, then type the code and #.", "If the code was changed and forgotten, hold the button while plugging the Arduino in to reset it to 1234.", "Check the keypad with the self-test. A wrong pin order can send the wrong digits."] },
+    { g: "Sensor & alarm" },
+    { t: "Alarm goes off by itself", cause: "The sensor sees something close, or picks up echoes.",
+      steps: ["Run the self-test and watch the distance with nothing in front of it. It should be well over 20 cm.", "Aim the sensor away from walls, tables and the floor.", "Raise <code>READINGS_TO_TRIGGER</code> (for example to 5) or lower <code>TRIGGER_DISTANCE_CM</code>.", "Keep the sensor wires short and away from the servo wires."] },
+    { t: "Sensor never sets it off", cause: "Wiring, power, or the exit delay.",
+      steps: ["Remember the sensor is ignored for 5 seconds after arming.", "The system must show <code>System Armed</code>. It doesn't watch while disarmed.", "In the self-test, if the distance always shows <code>--</code>, Trig and Echo are swapped, or VCC isn't on 5V.", "Use a hard flat object to test. Hands work, but clothing can absorb the ping."] },
+    { t: "Buzzer only makes one sound", cause: "It's an active buzzer.",
+      steps: ["Active buzzers have a built-in tone, so the siren and sound effects can't change pitch.", "A passive buzzer usually has a visible green circuit board on the bottom. An active one is sealed with black resin.", "Swap it for a passive buzzer, + to D12 and − to GND."] },
+    { t: "No sound at all", cause: "Wiring or polarity.",
+      steps: ["Check + goes to D12 and − to GND.", "Run the self-test. It plays three tones at start-up.", "Make sure nothing else is wired to D12."] },
+    { g: "Power & board" },
+    { t: "Arduino resets when the servo moves", cause: "The servo pulls more current than USB can give.",
+      steps: ["Put a 470–1000 µF capacitor across the servo's 5V and GND (long leg to 5V).", "Or power the servo from a separate 5V supply and connect its GND to the Uno's GND.", "Try a USB port directly on the computer, not a hub."] },
+    { t: "An LED never lights", cause: "Backwards LED, or a missing resistor connection.",
+      steps: ["The long leg (+) goes toward the Arduino pin, through the 220 Ω resistor.", "The short leg (−) goes to GND.", "Check green is on A0 and red on A1. The self-test lights each one."] },
+    { t: "Button does nothing or acts by itself", cause: "Wired to 5V, or using the wrong legs.",
+      steps: ["One side goes to A2 and the other to GND, never 5V.", "A 4-leg button has two pairs that are always joined. Use legs on opposite corners to be safe.", "The self-test prints PRESSED / released and lights the green LED while it's held."] },
+    { g: "Uploading" },
+    { t: "Library not found when compiling", cause: "A library isn't installed.",
+      steps: ["Go to Sketch → Include Library → Manage Libraries.", "Install \"LiquidCrystal I2C\" by Frank de Brabander and \"Keypad\" by Mark Stanley.", "Restart the IDE and compile again."] },
+    { t: "Upload fails (avrdude / not in sync)", cause: "Wrong board or port.",
+      steps: ["Check Tools → Board is \"Arduino Uno\" and Tools → Port is the right one.", "Close any other program using the port, including another Serial Monitor.", "Unplug and plug the USB back in, then try again."] }
+  ];
+  var tsList = document.getElementById("tsList");
+  var tsPanel = document.getElementById("tsPanel");
+  var tsButtons = [];
+  function showProblem(p, btn) {
+    tsButtons.forEach(function (b) { b.setAttribute("aria-selected", b === btn ? "true" : "false"); b.tabIndex = b === btn ? 0 : -1; });
+    tsPanel.innerHTML = "<h3>" + p.t + "</h3><p><span class=\"tag\">Likely cause</span><br>" + p.cause +
+      "</p><p class=\"tag\" style=\"margin-bottom:6px\">Try this</p><ol>" +
+      p.steps.map(function (s) { return "<li>" + s + "</li>"; }).join("") + "</ol>";
+  }
+  var first = null;
+  problems.forEach(function (p) {
+    if (p.g) {
+      var h = document.createElement("div");
+      h.className = "grp";
+      h.textContent = p.g;
+      tsList.appendChild(h);
+      return;
+    }
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.textContent = p.t;
+    b.addEventListener("click", function () { showProblem(p, b); });
+    b.addEventListener("keydown", function (e) {
+      var i = tsButtons.indexOf(b);
+      if (e.key === "ArrowDown" && tsButtons[i + 1]) { tsButtons[i + 1].focus(); tsButtons[i + 1].click(); e.preventDefault(); }
+      if (e.key === "ArrowUp" && tsButtons[i - 1]) { tsButtons[i - 1].focus(); tsButtons[i - 1].click(); e.preventDefault(); }
+    });
+    tsButtons.push(b);
+    tsList.appendChild(b);
+    if (!first) first = { p: p, b: b };
+  });
+  showProblem(first.p, first.b);
+
+  // ---------- Table of contents highlight ----------
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.toc a"));
+  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  function onScroll() {
+    var y = window.scrollY + 120;
+    var current = 0;
+    targets.forEach(function (t, i) { if (t && t.offsetTop <= y) current = i; });
+    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
